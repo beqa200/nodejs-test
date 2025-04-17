@@ -1,4 +1,5 @@
 import express from 'express';
+import upload from '../middleware/uploadMiddleware.js';
 const router = express.Router();
 import {
   getProducts,
@@ -8,11 +9,13 @@ import {
   deleteProduct,
   getCategoryStats,
   buyProduct,
+  uploadProducts,
 } from '../controllers/productController.js';
 import { auth, isAdmin } from '../middleware/auth.js';
 // User routes
 router.get('/', getProducts);
 router.get('/category-stats', getCategoryStats);
+router.post('/upload-products', upload.single('file'), uploadProducts);
 router.get('/:id', getOneProduct);
 router.post('/', createProduct);
 router.put('/:id', updateProduct);

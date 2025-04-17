@@ -1,5 +1,7 @@
 import pool from '../config/db.config.js';
 import { PrismaClient } from '@prisma/client';
+import xlsx from 'xlsx';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -150,6 +152,59 @@ async function buyProduct(req, res) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export const uploadProducts = async (req, res) => {
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Read Excel file
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+
+    // Check if file is empty
+    if (!data.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Excel file is empty' });
+    }
+
+    // Process products
+    const products = data.map((row) => ({
+      name: row.name,
+      price: parseFloat(row.price),
+      stock: parseInt(row.stock),
+      description: row.description || null,
+      categoryId: row.categoryId ? parseInt(row.categoryId) : null,
+      slug: row.name ? row.name.toLowerCase().replace(/\s+/g, '-') : null,
+    }));
+
+    // Save to database
+    const result = await prisma.products.createMany({
+      data: products,
+      skipDuplicates: true,
+    });
+
+    // Clean up file
+    fs.unlinkSync(req.file.path);
+
+    // Return success
+    res.status(200).json({
+      message: 'Products uploaded successfully',
+      count: result.count,
+    });
+  } catch (error) {
+    // Clean up file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({ error: 'Error processing the Excel file' });
+  }
+};
 
 export {
   getProducts,
