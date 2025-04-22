@@ -15,6 +15,7 @@ async function getProducts(req, res) {
             name: true,
           },
         },
+        images: true,
       },
     });
     res.json(products);
@@ -29,6 +30,9 @@ async function getOneProduct(req, res) {
     const { id } = req.params;
     const product = await prisma.products.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        images: true,
+      },
     });
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -203,6 +207,98 @@ export const uploadProducts = async (req, res) => {
     }
 
     res.status(500).json({ error: 'Error processing the Excel file' });
+  }
+};
+
+// Upload product images
+export const uploadProductImages = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    // Check if product exists
+    const product = await prisma.products.findUnique({
+      where: { id: parseInt(productId) },
+    });
+
+    if (!product) {
+      // Clean up uploaded files if product doesn't exist
+      if (req.files && req.files.length > 0) {
+        req.files.forEach((file) => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
+      }
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Check if files were uploaded
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Process uploaded files
+    const imagePromises = req.files.map((file) => {
+      return prisma.productImage.create({
+        data: {
+          url: file.path,
+          productId: parseInt(productId),
+        },
+      });
+    });
+
+    // Save all images to database
+    const images = await Promise.all(imagePromises);
+
+    res.status(201).json({
+      message: 'Product images uploaded successfully',
+      count: images.length,
+      images,
+    });
+  } catch (error) {
+    console.error('Error uploading product images:', error);
+
+    // Clean up uploaded files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach((file) => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+
+    res.status(500).json({ error: 'Error uploading product images' });
+  }
+};
+
+// Delete product image
+export const deleteProductImage = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+
+    // Find the image
+    const image = await prisma.productImage.findUnique({
+      where: { id: parseInt(imageId) },
+    });
+
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    // Delete the file from the filesystem
+    if (fs.existsSync(image.url)) {
+      fs.unlinkSync(image.url);
+    }
+
+    // Delete the image record from the database
+    await prisma.productImage.delete({
+      where: { id: parseInt(imageId) },
+    });
+
+    res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting product image:', error);
+    res.status(500).json({ error: 'Error deleting product image' });
   }
 };
 

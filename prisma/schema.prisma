@@ -25,6 +25,7 @@ model products {
   stock       Int?
   description String?   @db.VarChar(255)
   slug        String?   @db.VarChar(255)
+  images      ProductImage[]
 
   usersProducts usersProducts[]
 }
@@ -56,5 +57,13 @@ model usersProducts {
   userId    Int
   productId Int
   user      user     @relation(fields: [userId], references: [id])
+  product   products @relation(fields: [productId], references: [id])
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  url       String   @db.VarChar(255)
+  productId Int
   product   products @relation(fields: [productId], references: [id])
 }

@@ -12,7 +12,7 @@ import {
   resetPassword,
   updateProfilePicture,
 } from '../controllers/userController.js';
-import upload from '../middleware/uploadMiddleware.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 import { auth } from '../middleware/auth.js';
 
 router.post('/', createUser);

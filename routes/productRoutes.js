@@ -1,5 +1,5 @@
 import express from 'express';
-import upload from '../middleware/uploadMiddleware.js';
+import { upload, productImageUpload } from '../middleware/uploadMiddleware.js';
 const router = express.Router();
 import {
   getProducts,
@@ -10,6 +10,8 @@ import {
   getCategoryStats,
   buyProduct,
   uploadProducts,
+  uploadProductImages,
+  deleteProductImage,
 } from '../controllers/productController.js';
 import { auth, isAdmin } from '../middleware/auth.js';
 // User routes
@@ -21,4 +23,9 @@ router.post('/', createProduct);
 router.put('/:id', updateProduct);
 router.delete('/:id', auth, isAdmin, deleteProduct);
 router.post('/buyProduct/:id', auth, buyProduct);
+
+// Product image routes
+router.post('/:productId/images', auth, productImageUpload.array('images', 10), uploadProductImages);
+router.delete('/images/:imageId', auth, isAdmin, deleteProductImage);
+
 export default router;
